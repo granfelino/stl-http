@@ -1,3 +1,7 @@
+"""
+This is the HTTP server.
+"""
+
 import logging
 import http.server
 import re
@@ -13,14 +17,22 @@ ADDRESS = (HOST, PORT)
 
 
 class RequestHandler(http.server.BaseHTTPRequestHandler):
+    """
+    Request handler sublass for custom responses.
+    """
+
     __match_items = re.compile("^/items$")
     __match_items_id = re.compile(r"^/items/([a-zA-Z]+)$")
     _items = {"siema": "helo"}
 
     def items_to_json(self) -> bytes:
+        """Returns a JSON string of the items dictionary."""
+
         return json.dumps(self._items).encode(encoding="utf-8")
 
     def list_items(self) -> None:
+        """Sends 200 and the list of items to the client."""
+
         self.send_response(200)
         items_s = self.items_to_json()
         self.send_header("Content-Type", "application/json")
@@ -29,6 +41,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(items_s)
 
     def add_item(self, item_id: str, item_val: str) -> None:
+        """Sends 200 if the item is not already present or 404 if it is."""
+
         if item_id in self._items:
             self.send_response(404)
             body = f"Item with ID: {item_id} already exists."
@@ -45,6 +59,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self._items[item_id] = item_val
 
     def list_single_item(self, item_id: str) -> None:
+        """
+        Returns 200 and lists a single item to the client or
+        returns 404 if item is not found.
+        """
+
         item_s = self._items.get(item_id, None)
 
         if item_s is None:
@@ -62,6 +81,8 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(item_s.encode(encoding="utf-8"))
 
     def invalid_request(self) -> None:
+        """Shortcut function for sending a 404."""
+
         self.send_response(404)
         body = "Page Not Found\n"
         self.send_header("Context-Type", "text/plain")
@@ -70,6 +91,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body.encode(encoding="utf-8"))
 
     def do_GET(self):
+        """
+        GET function override, either lists all items or a single one
+        or calls invalid_request()
+        """
+
         if self.__match_items.match(self.path):
             self.list_items()
         elif self.__match_items_id.match(self.path):
@@ -79,6 +105,11 @@ class RequestHandler(http.server.BaseHTTPRequestHandler):
             self.invalid_request()
 
     def do_POST(self):
+        """
+        POST override, adds an item or returns 404 if item_id is already
+        present.
+        """
+
         logging.info("POST request entry")
 
         path_cond = self.__match_items_id.match(self.path)
